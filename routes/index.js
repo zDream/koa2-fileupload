@@ -11,7 +11,7 @@ router.get('/upload',async (ctx, next) => {
 })
 router.post('/fileUpload',async(ctx,next) => {
     await next()
-    let uploadDir = 'assets/uploads/'
+    let uploadDir = 'upload/'
 
     let mystorage = customStroage({
         // 文件保存路径 文件重命名
