@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+    <title>文件上传Demo</title>
+    <style>
+        html, body {
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            margin: 0;
+            text-align: center;
+            font-family: Helvetica Neue,Helvetica,PingFang SC,Hiragino Sans GB,Microsoft YaHei,\\5FAE\8F6F\96C5\9ED1,Arial,sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .main-box {
+            width: 600px;
+            margin: 50px auto;
+            padding: 10px;
+            border: 1px solid #f5f7f9;
+            border-radius: 2px;
+        }
+        .upload-header {
+            border-bottom: 1px solid #cccccc;
+            text-align: left;
+            margin-bottom: 10px;
+        }
+        .upload-body {
+            position: relative;
+            width: 80px;
+            background: #2d8cf0;
+            text-align: center;
+            color: #FFF;
+            padding: 0px 5px;
+            -webkit-border-radius: 2px;
+            border-radius: 2px;
+            padding: 5px;
+        }
+
+        .upload-body:hover {
+            background: #57a3f3;
+        }
+
+        .upload-body span {}
+
+        .upload-body form {
+            width: 100%;
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            opacity: 0;
+            filter: alpha(opacity=0);
+        }
+
+        .upload-body form input {
+            width: 100%;
+        }
+        .upload-footer {
+            border: 1px solid #f5f7f9;
+            margin: 10px auto;
+        }
+        .preview-list {
+            margin: 0;
+            padding: 0;
+            text-align: left;
+        }
+        .preview-item {
+            margin: 0;
+            padding: 5px;
+            list-style: none;
+            cursor: default;
+        }
+        .preview-item:hover {
+            background: #f5f7f9;
+        }
+    </style>
+</head>
+<body>
+<div class="main-box">
+    <div class="upload-header">
+        文件上传Demo
+    </div>
+    <div class="upload-body">
+        <span>上传图片</span>
+        <form id="uploadForm" enctype="multipart/form-data" method="post">
+            <input type="file" name="uploadFile" id="uploadFile" onchange="doUpload()" />
+        </form>
+    </div>
+    <label id="lab"></label>
+    <input type="button" onclick="puase()" value="暂停">
+    <input type="button" onclick="upload()" value="继续上传">
+    上传进度:<progress id="pro" value="0"></progress>
+    <img id="image">
+    <div class="upload-footer">
+        <ul id="previewList" class="preview-list">
+        </ul>
+    </div>
+</div>
+<script src="javascripts/jquery/jquery.js"></script>
+<script>
+    var flag = false
+    var formData = []
+    var infoQuene = new Array()// formData 数据队列
+    var xhrQuene = new Array()// xhr 数据队列
+    //停止上传
+    var puase = function (){
+        flag = true;
+//        xhr.abort();
+//        alert("暂停")
+    }
+    //继续上传
+    function upload(){
+        flag = false;
+        ajaxMethod(infoQuene);
+    }
+    var doUpload = function () {
+
+        var fileStream = $('#uploadFile')[0].files[0];
+        var name = $('input').val()
+
+        let segment = 100;//段大小
+        var chunk = parseInt(fileStream.size/segment) //计算出每片大小
+        var chunks = [];
+        var start = 0;
+        //文件分片
+        for (var i = 1; i <= segment; i++) {
+            var end = start + chunk;
+            chunks[i] = new Object();
+            chunks[i].start = start;
+            if(i==segment){
+                chunks[i].end = fileStream.size
+            }else {
+                chunks[i].end = end;
+            }
+            chunks[i].blob = fileStream.slice(chunks[i].start , chunks[i].end);
+            chunks[i].start = start;
+            start = end;
+        }
+
+        if(fileStream.type=='image/jpeg'){
+            var render = new FileReader();
+            render.readAsDataURL(fileStream)
+            render.onload = function(){
+                $('#image').attr("src",render.result)
+            }
+        }
+
+        var xhrOnProgress=function(fun) {
+            xhrOnProgress.onprogress = fun; //绑定监听
+
+            //使用闭包实现监听绑
+            return function() {
+                //通过$.ajaxSettings.xhr();获得XMLHttpRequest对象
+                var xhr = $.ajaxSettings.xhr();
+                //判断监听函数是否为函数
+                if (typeof xhrOnProgress.onprogress !== 'function')
+                    return xhr;
+                //如果有监听函数并且xhr对象支持绑定时就把监听函数绑定上去
+                if (xhrOnProgress.onprogress && xhr.upload) {
+                    xhr.upload.onprogress = xhrOnProgress.onprogress;
+                }
+                return xhr;
+            }
+        }
+
+        for(let i =1;i<chunks.length;i++){
+            formData[i] = new FormData()
+            formData[i].append('file_name',fileStream.name);
+            formData[i].append('file_size',fileStream.size);
+            formData[i].append('name', name)
+            formData[i].set('start',chunks[i].start)
+            formData[i].set('end',  chunks[i].end)
+            formData[i].set('file', chunks[i].blob,i+fileStream.name)
+            infoQuene.push(formData[i])
+        }
+        ajaxMethod(infoQuene);
+
+
+    }
+
+    function ajaxMethod(info){
+
+        if(flag){
+            return
+        }
+
+        //如果队列为空，则结束 ajax
+        if (info === undefined || info.length == 0) {
+            // array empty or does not exist
+            console.log('已结束循环')
+            return
+        }
+        var xhr = $.ajax({
+            url: 'http://localhost:3000/fileUpload',
+            type: 'POST',
+//                async: false,
+            data: infoQuene.shift(),
+            processData: false,
+            contentType: false,
+//                xhr:xhrOnProgress(function(e){
+//                    var percent=e.loaded / e.total;//计算百分比
+//                    $("#pro").attr("value",percent)
+//                    $("#pro").attr("value",xhr.length/chunks.length)
+//                    $("#lab").html(xhr.length/chunks.length)
+//                }),
+            success: function (res) {
+                if (res.status === 200) {
+                    xhrQuene.push(xhr)
+                    ajaxMethod(infoQuene)
+
+                    console.log('成功', res)
+                    var childArr = [
+                        '<li class="preview-item">',
+                        '<div>',
+                        'filename: ',
+                        res.data.filename,
+                        '</div>',
+                        '<div>',
+                        'url: ',
+                        res.data.url,
+                        '</div>',
+                        '</li>'
+                    ]
+                    $('#previewList').append(childArr.join(''))
+                } else {
+                    console.log('失败', res)
+                }
+            },
+            error: function (res) {
+                console.log('error', res)
+            }
+        })
+    }
+</script>
+</body>
+</html>
