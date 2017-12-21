@@ -3,12 +3,12 @@
 标签（空格分隔）： node.js
 
 ---
-##前言
+## 前言
 >大文件的切片断点续传，起初我在许多博客，论坛，找了好长时间，没有找到相应的demo,和例子，要不么不能用，要么是一个点，无奈之下，只能我自己去找相应的资料去写。期间对于这一块是有好多的问题，还要感谢[这篇博主][1]给予的指点和帮助
 
 有什么问题请issus提问，我会继续更新
 
-##技术栈
+## 技术栈
 
 jquery+h5+node+koa2+multer
 
@@ -26,7 +26,6 @@ js [fordata][4]的使用
   [5]: https://github.com/expressjs/multer
   [6]: https://github.com/expressjs/multer/blob/master/StorageEngine.md
 
-
 ## 项目运行
 
 git clone   https://github.com/zDream/koa2-fileupload.git
@@ -36,4 +35,6 @@ cd koa2-fileupload
 npm install
 
 npm run start
+
+>注意ie10以前版本不支持h5，运行不了。 可用Chrome,Firefox,Safari，Opera来运行
 
